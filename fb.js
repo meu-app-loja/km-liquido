@@ -7,7 +7,14 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // Configuração do projeto Firebase (cole aqui o firebaseConfig do console). Não é senha.
-const CONFIG = null; /*__FIREBASE_CONFIG__*/
+const CONFIG = {
+  apiKey: 'AIzaSyCxFX-bSIaaMmqx62w2a29wIq32x5_NitQ',
+  authDomain: 'km-liquido.firebaseapp.com',
+  projectId: 'km-liquido',
+  storageBucket: 'km-liquido.firebasestorage.app',
+  messagingSenderId: '1051328812430',
+  appId: '1:1051328812430:web:7cbefe516db6ca9d66c0df',
+};
 
 let auth = null, db = null;
 if (CONFIG) {
