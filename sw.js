@@ -1,6 +1,6 @@
 // Km Líquido: guarda o app no celular para abrir sem internet.
 // Os dados não passam por aqui: o Firebase cuida deles e sincroniza sozinho.
-const CACHE = 'km-liquido-3';
+const CACHE = 'km-liquido-4';
 const APP = ['./', './index.html', './style.css', './calc.js', './app.js', './fb.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon.png'];
 
@@ -20,7 +20,7 @@ self.addEventListener('fetch', (e) => {
   const fontes = u.hostname === 'fonts.googleapis.com' || u.hostname === 'fonts.gstatic.com';
   if (doApp) {
     // Rede primeiro (pega as atualizações); sem internet, usa a cópia guardada
-    e.respondWith(fetch(req).then((r) => guardar(req, r)).catch(() => caches.match(req, { ignoreSearch: true }).then((r) => r || caches.match('./index.html'))));
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then((r) => guardar(req, r)).catch(() => caches.match(req, { ignoreSearch: true }).then((r) => r || caches.match('./index.html'))));
   } else if (sdk || fontes) {
     e.respondWith(caches.match(req).then((r) => r || fetch(req).then((res) => guardar(req, res))));
   }

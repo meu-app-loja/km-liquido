@@ -1,5 +1,5 @@
 // ===== Km Líquido — interface (versão Firebase: um carro, vários motoristas) =====
-import { FB } from './fb.js';
+import { FB } from './fb.js?v=4';
 
 (() => {
   'use strict';
@@ -935,6 +935,7 @@ import { FB } from './fb.js';
     h += `<section class="card"><h2>Plataformas</h2><div class="chips">${c.plataformas.map((p) => `<span class="chip" style="display:inline-flex;align-items:center;gap:4px;padding-right:4px">${esc(p)}<button class="icon-btn" style="width:30px;height:30px" data-act="delPlat" data-p="${esc(p)}" aria-label="Remover ${esc(p)}" type="button">${ic('x')}</button></span>`).join('')}</div>
       <form id="fPlat" class="row" style="flex-wrap:nowrap"><input class="input dr" id="p-novo" placeholder="Adicionar plataforma" autocomplete="off" value="${esc(dv('p-novo'))}"><button class="btn" type="submit">Adicionar</button></form></section>`;
     h += cardConta() + cardInstalar() + cardDados();
+    h += '<p class="note" style="text-align:center">Km Líquido · versão 4</p>';
     return h;
   }
 
