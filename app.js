@@ -1108,9 +1108,27 @@ import { FB } from './fb.js';
     try { b = JSON.parse(txt.trim()); } catch (e) { b = null; }
     if (!b || b.app !== 'km-liquido') { toast('Esse arquivo não é um backup do Km Líquido.'); return; }
     const conv = b.versao === 3 ? normalizar(b) : deV1(b, (donoM() || {}).id);
-    trazer(conv, b.versao === 3 || !mots().length);
-    fecharSheet(); render(); toast('Backup restaurado.');
+    if (!mots().length) { trazer(conv, true); fecharSheet(); render(); toast('Backup restaurado.'); return; }
+    // Já tem gente cadastrada: mantém os motoristas daqui e traz os dados do carro e os lançamentos
+    const atual = mots(), dono = donoM();
+    const doBk = (conv.config && conv.config.motoristas) || [];
+    const bkDono = doBk.find((m) => m.dono) || doBk[0];
+    const mapa = {};
+    if (bkDono && dono) mapa[bkDono.id] = dono.id;
+    const outrosBk = doBk.filter((m) => m !== bkDono), outrosAqui = atual.filter((m) => !dono || m.id !== dono.id);
+    outrosBk.forEach((m, i) => { if (outrosAqui[i]) mapa[m.id] = outrosAqui[i].id; });
+    const p = {};
+    for (const k of CAMPOS_CARRO) if (conv.config && conv.config[k] !== undefined) p[k] = clone(conv.config[k]);
+    if (bkDono && dono) p.motoristas = atual.map((m) => (m.id === dono.id ? { ...m, diasMes: bkDono.diasMes || m.diasMes, meta: bkDono.meta || m.meta } : m));
+    S.demo = null;
+    if (Object.keys(p).length && !patchCfg(p)) return;
+    const troca = (id) => mapa[id] || id;
+    for (const u of Object.values(conv.usos || {})) put('usos', { ...u, mot: troca(u.mot) });
+    for (const g of Object.values(conv.gastos || {})) put('gastos', { ...g, pagoPor: troca(g.pagoPor) });
+    for (const x of Object.values(conv.pagamentos || {})) put('pagamentos', { ...x, de: troca(x.de), para: troca(x.para) });
+    fecharSheet(); render(); toast('Dados do carro trazidos.');
   }
+  const CAMPOS_CARRO = ['veiculo', 'situacao', 'fipe', 'deprecAnualPct', 'fin', 'aluguel', 'comb', 'manutencaoKm', 'fixos', 'plataformas', 'est'];
 
   // ---------- ações ----------
   function irTab(t) { S.tab = TABS.includes(t) ? t : 'hoje'; try { if (location.hash !== '#' + S.tab) location.hash = S.tab; } catch (e) { /* sem hash */ } render(); window.scrollTo(0, 0); }
