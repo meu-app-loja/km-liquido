@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() { return request.auth != null; }
+    function carro(id) { return get(/databases/$(database)/documents/carros/$(id)).data; }
+    function membro(id) { return logado() && request.auth.uid in carro(id).membros; }
+
+    // Código de convite: quem recebeu o código consegue achar o carro
+    match /convites/{codigo} {
+      allow get: if logado();
+      allow create: if logado() && membro(request.resource.data.carroId);
+      allow delete: if logado() && membro(resource.data.carroId);
+    }
+
+    match /carros/{carroId} {
+      // Só quem faz parte do carro vê os dados dele
+      allow read: if logado() && request.auth.uid in resource.data.membros;
+
+      allow create: if logado()
+        && request.resource.data.criador == request.auth.uid
+        && request.resource.data.membros == [request.auth.uid];
+
+      allow update: if logado() && (
+        // Quem faz parte edita; só quem criou muda a lista de pessoas
+        (request.auth.uid in resource.data.membros
+          && request.resource.data.criador == resource.data.criador
+          && (request.resource.data.membros == resource.data.membros
+              || request.auth.uid == resource.data.criador))
+        ||
+        // Entrar no carro com um código de convite válido
+        (!(request.auth.uid in resource.data.membros)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['membros', 'entrada', 'contas'])
+          && request.resource.data.membros == resource.data.membros.concat([request.auth.uid])
+          && request.resource.data.get('contas', {}).diff(resource.data.get('contas', {})).affectedKeys().hasOnly([request.auth.uid])
+          && get(/databases/$(database)/documents/convites/$(request.resource.data.entrada)).data.carroId == carroId)
+      );
+
+      allow delete: if logado() && request.auth.uid == resource.data.criador;
+
+      // Usos do carro, gastos e pagamentos
+      match /{colecao}/{docId} {
+        allow read, write: if colecao in ['usos', 'gastos', 'pagamentos'] && membro(carroId);
+      }
+    }
+  }
+}

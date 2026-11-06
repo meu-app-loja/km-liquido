@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Km Líquido</title>
+<meta name="description" content="Quanto sobra de verdade das corridas de aplicativo, para quem divide o carro.">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141C22" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Km Líquido">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div class="top-in"><div class="brand"><span class="brand-mark" aria-hidden="true">km</span>Km Líquido</div><div class="sync" id="sync" role="status" hidden></div></div></header>
+<main id="view"><div class="empty" style="padding-top:48px">Carregando…</div></main>
+<nav class="tabs" aria-label="Seções"><div class="tabs-in">
+<button class="tab" data-tab="hoje" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11"/><rect x="3" y="11" width="18" height="6" rx="2"/><path d="M5.5 17v2.5h2.5V17M16 17v2.5h2.5V17"/><circle cx="7.5" cy="14" r="1"/><circle cx="16.5" cy="14" r="1"/></svg>Hoje</button>
+<button class="tab" data-tab="gastos" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Gastos</button>
+<button class="tab" data-tab="resultados" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 21h17"/><rect x="5.5" y="12" width="3" height="6" rx=".6"/><rect x="10.5" y="6" width="3" height="12" rx=".6"/><rect x="15.5" y="9" width="3" height="9" rx=".6"/></svg>Resultados</button>
+<button class="tab" data-tab="historico" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Histórico</button>
+<button class="tab" data-tab="ajustes" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.21 5.34L10.66 2.49L13.34 2.49L13.79 5.34L15.45 6.02L17.78 4.33L19.67 6.22L17.98 8.55L18.66 10.21L21.51 10.66L21.51 13.34L18.66 13.79L17.98 15.45L19.67 17.78L17.78 19.67L15.45 17.98L13.79 18.66L13.34 21.51L10.66 21.51L10.21 18.66L8.55 17.98L6.22 19.67L4.33 17.78L6.02 15.45L5.34 13.79L2.49 13.34L2.49 10.66L5.34 10.21L6.02 8.55L4.33 6.22L6.22 4.33L8.55 6.02Z"/><circle cx="12" cy="12" r="3"/></svg>Ajustes</button>
+</div></nav>
+<div id="toast" class="toast" hidden role="status"></div>
+<div id="sheet" hidden></div>
+<noscript><p style="padding:16px">O Km Líquido precisa de JavaScript ligado.</p></noscript>
+<script src="calc.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
