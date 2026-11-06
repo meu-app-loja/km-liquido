@@ -1,5 +1,5 @@
 // ===== Km Líquido — interface (versão Firebase: um carro, vários motoristas) =====
-import { FB } from './fb.js?v=4';
+import { FB } from './fb.js?v=5';
 
 (() => {
   'use strict';
@@ -794,7 +794,7 @@ import { FB } from './fb.js?v=4';
   }
   const fmtCod = (c) => (c ? c.slice(0, 4) + '-' + c.slice(4) : '');
   const linkApp = () => location.origin + location.pathname;
-  const msgConvite = () => `Vamos lançar o uso do carro no Km Líquido.\n1. Abra ${linkApp()}\n2. Crie sua conta com e-mail e senha\n3. Toque em "Tenho um código" e digite: ${fmtCod(S.carro.codigo)}`;
+  const msgConvite = () => `Vamos lançar o uso do carro no Km Líquido.\n\n1. Abra este link no navegador (Safari no iPhone, Chrome no Android):\n${linkApp()}\n\n2. Instale na tela do celular:\n• iPhone: toque em Compartilhar e depois em "Adicionar à Tela de Início"\n• Android: toque no menu ⋮ e depois em "Instalar app"\n\n3. Abra o app pelo ícone novo e crie sua conta com seu e-mail e uma senha.\n\n4. Toque em "Tenho um código" e digite: ${fmtCod(S.carro.codigo)}\n\n5. Escolha o seu nome. Pronto!`;
   function cardConvite(curto) {
     if (S.demo || !S.carro || !S.carro.codigo) return '';
     const contas = Object.values(S.carro.contas || {}).map((c) => esc(c.email || '')).filter(Boolean);
@@ -935,7 +935,7 @@ import { FB } from './fb.js?v=4';
     h += `<section class="card"><h2>Plataformas</h2><div class="chips">${c.plataformas.map((p) => `<span class="chip" style="display:inline-flex;align-items:center;gap:4px;padding-right:4px">${esc(p)}<button class="icon-btn" style="width:30px;height:30px" data-act="delPlat" data-p="${esc(p)}" aria-label="Remover ${esc(p)}" type="button">${ic('x')}</button></span>`).join('')}</div>
       <form id="fPlat" class="row" style="flex-wrap:nowrap"><input class="input dr" id="p-novo" placeholder="Adicionar plataforma" autocomplete="off" value="${esc(dv('p-novo'))}"><button class="btn" type="submit">Adicionar</button></form></section>`;
     h += cardConta() + cardInstalar() + cardDados();
-    h += '<p class="note" style="text-align:center">Km Líquido · versão 4</p>';
+    h += '<p class="note" style="text-align:center">Km Líquido · versão 5</p>';
     return h;
   }
 
