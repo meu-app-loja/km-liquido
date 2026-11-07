@@ -1,6 +1,6 @@
 // Km Líquido: guarda o app no celular para abrir sem internet.
 // Os dados não passam por aqui: o Firebase cuida deles e sincroniza sozinho.
-const CACHE = 'km-liquido-5';
+const CACHE = 'km-liquido-6';
 const APP = ['./', './index.html', './style.css', './calc.js', './app.js', './fb.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon.png'];
 

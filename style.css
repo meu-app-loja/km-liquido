@@ -286,3 +286,7 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 2px 0; width: 100
 .brand-mark.big { width: 52px; height: 52px; border-radius: 14px; font-size: 22px; flex: none; }
 .codigo { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 30px; font-weight: 700; letter-spacing: .14em; text-align: center; padding: 14px 8px; border-radius: 12px; background: var(--surface-2); -webkit-user-select: all; user-select: all; }
 input#cv-cod { text-transform: uppercase; letter-spacing: .1em; }
+
+.hora { display: flex; gap: 6px; }
+.hora .input { flex: 1; min-width: 0; }
+.hora .btn { height: 46px; padding: 0 10px; flex: none; }

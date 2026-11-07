@@ -1,5 +1,5 @@
 // ===== Km Líquido — interface (versão Firebase: um carro, vários motoristas) =====
-import { FB } from './fb.js?v=5';
+import { FB } from './fb.js?v=6';
 
 (() => {
   'use strict';
@@ -416,13 +416,26 @@ import { FB } from './fb.js?v=5';
   function campoU(u, f, label, type, mode, ph, suf) {
     return `<label class="field" for="u-${f}"><span>${label}</span><div class="${suf ? 'suffix' : ''}"><input class="input" id="u-${f}" data-u="${f}" data-uid="${u.id}" type="${type}" inputmode="${mode}" value="${esc(u[f] || '')}" placeholder="${esc(ph || '')}" autocomplete="off">${suf ? `<b>${suf}</b>` : ''}</div></label>`;
   }
+  function campoHora(u, f, label) {
+    return `<div class="field"><span>${label}</span><div class="hora"><input class="input" id="u-${f}" aria-label="${label}" data-u="${f}" data-uid="${u.id}" data-hora="1" type="text" inputmode="numeric" maxlength="5" placeholder="--:--" value="${esc(u[f] || '')}" autocomplete="off"><button class="btn sm" data-act="agoraHora" data-f="${f}" data-uid="${u.id}" type="button">Agora</button></div></div>`;
+  }
+  // "1710" -> "17:10", "9" -> "09:00", "930" -> "09:30"; null se inválida
+  function lerHora(v) {
+    const d = String(v || '').replace(/\D/g, '');
+    if (!d) return '';
+    if (d.length > 4) return null;
+    const h = d.length <= 2 ? +d : +d.slice(0, d.length - 2);
+    const m = d.length <= 2 ? 0 : +d.slice(-2);
+    if (h > 23 || m > 59) return null;
+    return pad(h) + ':' + pad(m);
+  }
   function cardUso(u, isH) {
     const aberto = u.ini && !u.fim, part = u.tipo === 'particular';
     const lo = ultimoOdo(u.id);
     let h = `<section class="card" id="cardUso"><div class="row between"><h2>${part ? 'Uso particular' : 'Trabalho'}${u.data !== S.dia ? ` <span class="muted small">(começou ${dm(u.data)})</span>` : ''}</h2>${aberto && isH ? `<span class="turno-live"><i></i>desde ${esc(u.ini)}</span>` : ''}</div>`;
-    h += `<div class="seg" role="group" aria-label="Tipo de uso"><button data-act="tipoUso" data-t="trabalho" aria-pressed="${!part}" type="button">Trabalho</button><button data-act="tipoUso" data-t="particular" aria-pressed="${part}" type="button">Particular</button></div>`;
+    h += `<p class="eyebrow">Tipo deste uso</p><div class="seg" role="group" aria-label="Tipo deste uso"><button data-act="tipoUso" data-t="trabalho" aria-pressed="${!part}" type="button">Trabalho</button><button data-act="tipoUso" data-t="particular" aria-pressed="${part}" type="button">Particular</button></div>`;
     if (aberto && isH) h += `<button class="btn dark big block" data-act="encerrar" type="button">Encerrar ${part ? 'o uso particular' : 'o trabalho'} agora</button>`;
-    h += `<div class="grid2">${campoU(u, 'ini', 'Início', 'time', 'numeric')}${campoU(u, 'fim', 'Fim', 'time', 'numeric')}</div>`;
+    h += `<div class="grid2">${campoHora(u, 'ini', 'Início')}${campoHora(u, 'fim', 'Fim')}</div>`;
     h += `<div class="grid2">${campoU(u, 'odoIni', 'Odômetro no início', 'text', 'numeric', lo ? nf(lo.odo) : 'km do painel')}${campoU(u, 'odoFim', 'Odômetro no fim', 'text', 'numeric', 'km do painel')}</div>`;
     h += `<details class="more"${u.kmManual || u.horasManual ? ' open' : ''}><summary>Sem odômetro ou sem horário? Informe direto</summary><div class="grid2">${campoU(u, 'kmManual', 'Km rodados', 'text', 'decimal', '', 'km')}${part ? '' : campoU(u, 'horasManual', 'Horas trabalhadas', 'text', 'decimal', 'ex.: 9,5', 'h')}</div><p class="note">Conte também os trechos vazios: ir buscar passageiro, voltar e rodar esperando chamada.</p></details>`;
     h += `<div id="usoInfo">${usoInfo(u)}</div>`;
@@ -935,7 +948,7 @@ import { FB } from './fb.js?v=5';
     h += `<section class="card"><h2>Plataformas</h2><div class="chips">${c.plataformas.map((p) => `<span class="chip" style="display:inline-flex;align-items:center;gap:4px;padding-right:4px">${esc(p)}<button class="icon-btn" style="width:30px;height:30px" data-act="delPlat" data-p="${esc(p)}" aria-label="Remover ${esc(p)}" type="button">${ic('x')}</button></span>`).join('')}</div>
       <form id="fPlat" class="row" style="flex-wrap:nowrap"><input class="input dr" id="p-novo" placeholder="Adicionar plataforma" autocomplete="off" value="${esc(dv('p-novo'))}"><button class="btn" type="submit">Adicionar</button></form></section>`;
     h += cardConta() + cardInstalar() + cardDados();
-    h += '<p class="note" style="text-align:center">Km Líquido · versão 5</p>';
+    h += '<p class="note" style="text-align:center">Km Líquido · versão 6</p>';
     return h;
   }
 
@@ -1245,7 +1258,19 @@ import { FB } from './fb.js?v=5';
     comecar: (b) => comecar(b.dataset.t),
     novoUso: (b) => { const u = novoUso(verId(), S.dia, b.dataset.t); if (u) { S.usoSel = u.id; render(); } },
     selUso: (b) => { S.usoSel = b.dataset.id; render(); },
-    tipoUso: (b) => { const u = usoSelecionado(); if (!u) return; patchUso(u.id, { tipo: b.dataset.t }); render(); },
+    tipoUso: (b) => {
+      const u = usoSelecionado(); if (!u || u.tipo === b.dataset.t) return;
+      const novo = b.dataset.t, nome = novo === 'particular' ? 'uso particular' : 'trabalho';
+      if (!u.fim) { patchUso(u.id, { tipo: novo }); render(); return; }
+      abrirSheet(`<h2 class="sec-title">Quer começar um ${nome}?</h2><p class="note">Este uso${u.ini ? ` (das ${esc(u.ini)} às ${esc(u.fim)})` : ''} já foi encerrado. Escolha o que você quer fazer:</p><div class="stack"><button class="btn primary big" data-sact="tipoNovo" data-t="${novo}" type="button">Começar ${nome} agora</button><button class="btn" data-sact="tipoMudar" data-t="${novo}" data-id="${u.id}" type="button">Corrigir: este uso foi ${nome}</button><button class="btn ghost" data-sact="fechar" type="button">Cancelar</button></div>`);
+    },
+    agoraHora: (b) => {
+      const u = D().usos[b.dataset.uid]; if (!u) return;
+      const f = b.dataset.f, agora = agoraHHMM();
+      if (!patchUso(u.id, { [f]: agora })) return;
+      render(); toast(f === 'fim' ? `Uso encerrado às ${agora}.` : `Início marcado às ${agora}.`);
+      if (f === 'fim') { const el = $('#u-odoFim'); if (el && !el.value) el.focus(); }
+    },
     encerrar: () => {
       const u = usoSelecionado(); if (!u) return;
       patchUso(u.id, { fim: agoraHHMM() }); render();
@@ -1365,14 +1390,27 @@ import { FB } from './fb.js?v=5';
     else if (id === 'fCodigo') entrarComCodigo($('#cv-cod').value);
   });
   const guardaRascunho = (t) => { if (t.classList && t.classList.contains('dr')) S.draft[t.id] = t.type === 'checkbox' ? t.checked : t.value; };
-  view.addEventListener('input', (e) => guardaRascunho(e.target));
+  view.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.dataset && t.dataset.hora) {
+      const d = t.value.replace(/\D/g, '').slice(0, 4);
+      t.value = d.length > 2 ? d.slice(0, 2) + ':' + d.slice(2) : d;
+    }
+    guardaRascunho(t);
+  });
   view.addEventListener('change', (e) => {
     const t = e.target;
     guardaRascunho(t);
     if (t.dataset.u) {
       const f = t.dataset.u, id = t.dataset.uid || (garantirTrabalho() || {}).id;
       const u = D().usos[id]; if (!u) return;
-      const v = t.value.trim(), p = { [f]: v };
+      let v = t.value.trim();
+      if (t.dataset.hora) {
+        const h = lerHora(v);
+        if (h === null) { toast('Hora inválida. Digite assim: 17:10'); t.value = u[f] || ''; return; }
+        v = h; t.value = h;
+      }
+      const p = { [f]: v };
       if (f === 'odoIni') {
         p.odoAuto = false;
         const enc = u.encerra && D().usos[u.encerra];
@@ -1381,7 +1419,8 @@ import { FB } from './fb.js?v=5';
       let fechou = false;
       if (f === 'odoFim' && v && u.ini && !u.fim && u.data >= addDias(hoje(), -1)) { p.fim = agoraHHMM(); fechou = true; }
       patchUso(id, p);
-      if (f === 'ini' || f === 'fim' || fechou) { render(); if (fechou) toast(`Uso encerrado às ${p.fim}.`); } else refreshHoje();
+      refreshHoje();
+      if (f === 'ini' || f === 'fim' || fechou) { renderSuave(); if (fechou) toast(`Uso encerrado às ${p.fim}.`); }
       return;
     }
     if (t.dataset.r) { const u = garantirTrabalho(); if (!u) return; patchUso(u.id, { resumo: { [t.dataset.r]: t.value.trim() } }); refreshHoje(); return; }
@@ -1422,6 +1461,12 @@ import { FB } from './fb.js?v=5';
       if (!p.de || !p.para || p.de === p.para) { toast('Escolha quem pagou e quem recebeu.'); return; }
       const ok2 = put('pagamentos', { id: uid(), data: hoje(), de: p.de, para: p.para, valor: Calc.r2(v) });
       fecharSheet(); render(); if (ok2) toast(`Pagamento de ${brl(v)} registrado.`);
+    } else if (a === 'tipoNovo') {
+      const t = b.dataset.t; fecharSheet();
+      if (S.dia === hoje()) comecar(t);
+      else { const u = novoUso(verId(), S.dia, t); if (u) { S.usoSel = u.id; render(); } }
+    } else if (a === 'tipoMudar') {
+      patchUso(b.dataset.id, { tipo: b.dataset.t }); fecharSheet(); render();
     } else if (a === 'lacMot') {
       const L = S.lac; fecharSheet();
       if (!L) return;
