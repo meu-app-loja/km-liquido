@@ -60,16 +60,18 @@ const Calc = (() => {
   }
 
   function ultimoPreco(gastos) {
-    const ab = gastos.filter((g) => g.tipo === 'combustivel' && g.litros > 0 && g.valor > 0)
-      .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : (a.odo || 0) - (b.odo || 0)));
+    const precoDe = (g) => (g.precoLitro > 0 ? g.precoLitro : g.litros > 0 && g.valor > 0 ? g.valor / g.litros : null);
+    const ab = gastos.filter((g) => g.tipo === 'combustivel' && precoDe(g))
+      .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : (a.criado || 0) - (b.criado || 0) || (a.odo || 0) - (b.odo || 0)));
     const g = ab[ab.length - 1];
-    return g ? { preco: g.valor / g.litros, data: g.data } : null;
+    return g ? { preco: precoDe(g), data: g.data } : null;
   }
 
   function fixosMensal(cfg) {
     const f = cfg.fixos || {};
     const a = (x) => parseNum(x) || 0;
-    return (a(f.seguroAnual) + a(f.ipvaAnual) + a(f.licenciamentoAnual)) / 12 +
+    const seguroMes = f.seguroPeriodo === 'mes' ? a(f.seguroAnual) : a(f.seguroAnual) / 12;
+    return seguroMes + (a(f.ipvaAnual) + a(f.licenciamentoAnual)) / 12 +
       a(f.celularMensal) + a(f.meiMensal) + a(f.outrosMensal);
   }
 

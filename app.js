@@ -1,5 +1,5 @@
 // ===== Km Líquido — interface (versão Firebase: um carro, vários motoristas) =====
-import { FB } from './fb.js?v=7';
+import { FB } from './fb.js?v=8';
 
 (() => {
   'use strict';
@@ -183,6 +183,18 @@ import { FB } from './fb.js?v=7';
     return true;
   }
   const patchCfg = (p) => patch('app', 'config', p);
+  // Correções pedidas pelo administrador em 07/11/2026. Cada uma só age uma vez (as condições deixam de valer depois).
+  function corrigirDados() {
+    if (S.demo) return;
+    const c = cfg();
+    if (String(c.fixos.seguroAnual || '').trim() === '294,82' && !c.fixos.seguroPeriodo) patchCfg({ fixos: { seguroPeriodo: 'mes' } });
+    const perto = (a, b) => Math.abs((a || 0) - b) < 0.06;
+    for (const g of gastosArr()) {
+      if (g.tipo !== 'combustivel' || g.data !== '2026-11-07' || g.corrigido) continue;
+      if (g.valor === 50 && perto(g.litros, 12.2)) patch('gastos', g.id, { cheio: false, precoLitro: 4.09, litros: 12.22, criado: 2, corrigido: true });
+      else if (g.valor === 60 && perto(g.litros, 14.3)) patch('gastos', g.id, { cheio: false, criado: 1, corrigido: true });
+    }
+  }
   const patchUso = (id, p) => patch('usos', id, p);
 
   const Fire = {
@@ -230,6 +242,7 @@ import { FB } from './fb.js?v=7';
       const pronto = () => {
         if (S.fase === 'app' || !Object.values(carregado).every(Boolean)) return;
         clearTimeout(this.timer); S.fase = 'app'; S.dia = hoje(); render();
+        corrigirDados();
       };
       this.timer = setTimeout(() => { if (S.fase !== 'app') toast('Os dados ainda não chegaram. Confira a internet.'); }, 12000);
       const falha = (e) => {
@@ -361,7 +374,7 @@ import { FB } from './fb.js?v=7';
       else if (md > 0) h += meter(R.bolso / md * 100, R.bolso >= md ? '<b>Meta do dia batida</b>' : `Faltam <b>${brl(md - R.bolso)}</b> para a meta do dia`, `meta ${brl0(md)}`);
       h += `<div class="minis">${mini(brl0(R.bruto), 'faturado')}${mini(R.kmT > 0 ? nf(R.kmT) + ' km' : '—', 'rodados')}${mini(hrs(R.horas || null), 'trabalhadas')}${mini(R.porHoraBolso != null ? brl(R.porHoraBolso) : '—', 'no bolso/hora')}</div>`;
     }
-    if (R.kmP > 0) h += `<p class="note">Uso particular: ${nf(R.kmP)} km, que custaram ${brl(R.combP + R.manutP)}. Sobra depois disso: <b>${brl(R.bolso - R.combP - R.manutP)}</b>.</p>`;
+    if (R.kmP > 0) h += `<p class="note"><b>Uso particular:</b> ${nf(R.kmP)} km rodados fora do trabalho gastaram ${brl(R.combP)} de combustível${R.manutP > 0.004 ? ` e ${brl(R.manutP)} de desgaste do carro, total ${brl(R.combP + R.manutP)}` : ''}. Isso não entra no dinheiro do trabalho, mas saiu do seu bolso: descontando, sobra <b>${brl(R.bolso - R.combP - R.manutP)}</b>.</p>`;
     h += `<details class="more" id="contaDia"${S.contaAberta ? ' open' : ''}><summary>Ver a conta do dia</summary>${contaBolso(R, x)}</details>`;
     return h;
   }
@@ -474,7 +487,7 @@ import { FB } from './fb.js?v=7';
   }
   function liGasto(g) {
     let det = '';
-    if (g.tipo === 'combustivel') det = [g.litros ? nf(g.litros, 1) + ' L' : '', g.litros && g.valor ? brl(g.valor / g.litros) + '/L' : '', g.cheio ? 'tanque cheio' : ''].filter(Boolean).join(' · ');
+    if (g.tipo === 'combustivel') det = [g.litros ? nf(g.litros, 1) + ' L' : '', g.precoLitro ? brl(g.precoLitro) + '/L' : g.litros && g.valor ? brl(g.valor / g.litros) + '/L' : '', g.cheio ? 'tanque cheio' : ''].filter(Boolean).join(' · ');
     else det = g.descr || '';
     if (varios()) det = (det ? det + ' · ' : '') + 'pago por ' + nomeMot(g.pagoPor || (donoM() || {}).id);
     return `<div class="li"><span class="t">${esc(dm(g.data))}</span><div class="main"><b>${esc(nomeGasto(g.tipo))}</b>${det ? `<small>${esc(det)}</small>` : ''}</div><span class="v">${brl(g.valor)}</span><button class="icon-btn" data-act="delGasto" data-id="${g.id}" aria-label="Apagar gasto de ${brl(g.valor)}" type="button">${ic('x')}</button></div>`;
@@ -525,8 +538,10 @@ import { FB } from './fb.js?v=7';
         <label class="field" for="g-valor"><span>Valor pago</span><div class="prefix"><b>R$</b><input class="input dr" id="g-valor" inputmode="decimal" placeholder="0,00" autocomplete="off" value="${esc(dv('g-valor'))}"></div></label></div>`;
     if (t === 'combustivel') {
       const lo = ultimoOdo();
-      h += `<div class="grid2"><label class="field" for="g-litros"><span>Litros</span><div class="suffix"><input class="input dr" id="g-litros" inputmode="decimal" placeholder="0,0" autocomplete="off" value="${esc(dv('g-litros'))}"><b>L</b></div></label>
-        <label class="field" for="g-odo"><span>Odômetro</span><div class="suffix"><input class="input dr" id="g-odo" inputmode="numeric" placeholder="${esc(lo ? nf(lo.odo) : 'km do painel')}" autocomplete="off" value="${esc(dv('g-odo'))}"><b>km</b></div></label></div>
+      h += `<div class="grid2"><label class="field" for="g-preco"><span>Preço do litro</span><div class="prefix"><b>R$</b><input class="input dr" id="g-preco" inputmode="decimal" placeholder="ex.: 4,09" autocomplete="off" value="${esc(dv('g-preco'))}"></div></label>
+        <label class="field" for="g-litros"><span>Litros</span><div class="suffix"><input class="input dr" id="g-litros" inputmode="decimal" placeholder="calcula sozinho" autocomplete="off" value="${esc(dv('g-litros'))}"><b>L</b></div></label></div>
+        <p class="note" id="g-calc">${calcAbast()}</p>
+        <div class="grid2"><label class="field" for="g-odo"><span>Odômetro</span><div class="suffix"><input class="input dr" id="g-odo" inputmode="numeric" placeholder="${esc(lo ? nf(lo.odo) : 'km do painel')}" autocomplete="off" value="${esc(dv('g-odo'))}"><b>km</b></div></label><div></div></div>
         <label class="check"><input type="checkbox" class="dr" id="g-cheio" ${dv('g-cheio', false) ? 'checked' : ''}><span>Completei o tanque (só marque se encheu até a boca)</span></label>
         <p class="note">${varios() ? 'O combustível de todos é somado e dividido pelos km de cada um no acerto, em Resultados. ' : ''}Com dois abastecimentos de tanque cheio e o odômetro, o app mede o consumo real do carro.</p>`;
     } else if (t === 'manutencao' || t === 'outro') {
@@ -941,14 +956,14 @@ import { FB } from './fb.js?v=7';
       <p class="note" id="ajComb">${ajComb()}</p></section>`;
     h += `<section class="card"><h2>Manutenção</h2>${campo({ id: 'm-km', label: 'Custo de manutenção por km', path: 'manutencaoKm', pre: 'R$', suf: '/km', est: 'manutencaoKm' })}<p class="note" id="ajManut">${ajManut()}</p></section>`;
     h += `<section class="card"><h2>Custos fixos</h2><div class="grid2">
-      ${campo({ id: 'x-seg', label: 'Seguro (por ano)', path: 'fixos.seguroAnual', pre: 'R$' })}${campo({ id: 'x-ipva', label: 'IPVA (por ano)', path: 'fixos.ipvaAnual', pre: 'R$' })}
+      <div class="stack" style="gap:6px">${campo({ id: 'x-seg', label: 'Seguro', path: 'fixos.seguroAnual', pre: 'R$' })}<select class="input" id="x-seg-per" aria-label="O seguro é pago" data-c="fixos.seguroPeriodo"><option value="ano"${c.fixos.seguroPeriodo !== 'mes' ? ' selected' : ''}>por ano</option><option value="mes"${c.fixos.seguroPeriodo === 'mes' ? ' selected' : ''}>por mês</option></select></div>${campo({ id: 'x-ipva', label: 'IPVA (por ano)', path: 'fixos.ipvaAnual', pre: 'R$' })}
       ${campo({ id: 'x-lic', label: 'Licenciamento (por ano)', path: 'fixos.licenciamentoAnual', pre: 'R$' })}${campo({ id: 'x-cel', label: 'Celular e internet (mês)', path: 'fixos.celularMensal', pre: 'R$' })}
       ${campo({ id: 'x-mei', label: 'MEI ou INSS (mês)', path: 'fixos.meiMensal', pre: 'R$' })}${campo({ id: 'x-out', label: 'Outros fixos (mês)', path: 'fixos.outrosMensal', pre: 'R$' })}
       </div><p class="note" id="ajFixos">${ajFixos()}</p></section>`;
     h += `<section class="card"><h2>Plataformas</h2><div class="chips">${c.plataformas.map((p) => `<span class="chip" style="display:inline-flex;align-items:center;gap:4px;padding-right:4px">${esc(p)}<button class="icon-btn" style="width:30px;height:30px" data-act="delPlat" data-p="${esc(p)}" aria-label="Remover ${esc(p)}" type="button">${ic('x')}</button></span>`).join('')}</div>
       <form id="fPlat" class="row" style="flex-wrap:nowrap"><input class="input dr" id="p-novo" placeholder="Adicionar plataforma" autocomplete="off" value="${esc(dv('p-novo'))}"><button class="btn" type="submit">Adicionar</button></form></section>`;
     h += cardConta() + cardInstalar() + cardDados();
-    h += '<p class="note" style="text-align:center">Km Líquido · versão 7</p>';
+    h += '<p class="note" style="text-align:center">Km Líquido · versão 8</p>';
     return h;
   }
 
@@ -1193,21 +1208,31 @@ import { FB } from './fb.js?v=7';
     render();
     toast(`${nomeCorrida(tipo)} de ${brl(v)} na ${S.plat} lançada.`);
   }
+  // Mostra os litros calculados a partir do valor e do preço do litro
+  function calcAbast() {
+    const v = P(dv('g-valor'), 'dec'), pr = P(dv('g-preco'), 'dec'), l = P(dv('g-litros'), 'dec');
+    if (v > 0 && pr > 0 && !(l > 0)) return `Dá <b>${nf(v / pr, 1)} litros</b>.`;
+    if (v > 0 && l > 0 && !(pr > 0)) return `Preço do litro: <b>${brl(v / l)}</b>.`;
+    return 'Digite o valor pago e o preço do litro que aparece na bomba. Os litros saem sozinhos.';
+  }
   function addGasto() {
     const data = $('#g-data').value || hoje();
     const valor = P($('#g-valor').value);
     if (!(valor > 0)) { toast('Digite o valor pago.'); $('#g-valor').focus(); return; }
     const pagou = mot(S.gPagou) ? S.gPagou : verId();
-    const g = { id: uid(), data, tipo: S.gTipo, valor: Calc.r2(valor), pagoPor: pagou };
+    const g = { id: uid(), data, tipo: S.gTipo, valor: Calc.r2(valor), pagoPor: pagou, criado: Date.now() };
     if (S.gTipo === 'combustivel') {
-      const l = P($('#g-litros').value, 'dec'), o = P($('#g-odo').value);
+      const pr = P($('#g-preco').value, 'dec'), o = P($('#g-odo').value);
+      let l = P($('#g-litros').value, 'dec');
+      if (!(l > 0) && pr > 0) l = Math.round(valor / pr * 100) / 100;
+      if (pr > 0) g.precoLitro = pr; else if (l > 0) g.precoLitro = Math.round(valor / l * 1000) / 1000;
       if (l > 0) g.litros = l;
       if (o > 0) g.odo = o;
       g.cheio = $('#g-cheio').checked;
     }
     const ds = $('#g-desc'); if (ds && ds.value.trim()) g.descr = ds.value.trim().slice(0, 80);
     if (!put('gastos', g)) return;
-    for (const id of ['g-data', 'g-valor', 'g-litros', 'g-odo', 'g-desc', 'g-cheio']) delete S.draft[id];
+    for (const id of ['g-data', 'g-valor', 'g-preco', 'g-litros', 'g-odo', 'g-desc', 'g-cheio']) delete S.draft[id];
     S.gastoMes = refMes(data);
     render();
     toast(S.gTipo === 'combustivel' && !(g.litros > 0) ? 'Gasto salvo. Com os litros, o app calcula o preço e o consumo.' : `${nomeGasto(g.tipo)} de ${brl(valor)} salvo${varios() ? ' no nome de ' + nomeMot(pagou) : ''}.`);
@@ -1392,6 +1417,7 @@ import { FB } from './fb.js?v=7';
   const guardaRascunho = (t) => { if (t.classList && t.classList.contains('dr')) S.draft[t.id] = t.type === 'checkbox' ? t.checked : t.value; };
   view.addEventListener('input', (e) => {
     const t = e.target;
+    if (t.id === 'g-valor' || t.id === 'g-preco' || t.id === 'g-litros') { S.draft[t.id] = t.value; const el = $('#g-calc'); if (el) el.innerHTML = calcAbast(); }
     if (t.dataset && t.dataset.hora) {
       const d = t.value.replace(/\D/g, '').slice(0, 4);
       t.value = d.length > 2 ? d.slice(0, 2) + ':' + d.slice(2) : d;
