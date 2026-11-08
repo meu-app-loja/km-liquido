@@ -122,23 +122,50 @@ const Calc = (() => {
     return { bolso: parcela, real: dep.valor + juros.valor, aluguel: 0, dep, juros, parcela };
   }
 
-  // Números do carro, calculados uma vez
-  function contexto(cfg, gastos, kmTotalRegistrado) {
+  // Consumo médio pelos abastecimentos, sem precisar de tanque cheio: km rodados entre o 1º e o último
+  // abastecimento ÷ litros colocados depois do 1º. Só vale com bastante dado (as sobras no tanque se diluem).
+  function consumoMedio(gastos, usos) {
+    const ab = gastos.filter((g) => g.tipo === 'combustivel' && g.litros > 0)
+      .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : (a.criado || 0) - (b.criado || 0)));
+    if (ab.length < 4) return null;
+    const de = ab[0].data, ate = ab[ab.length - 1].data;
+    const litros = ab.slice(1).reduce((s, g) => s + g.litros, 0);
+    const km = (usos || []).filter((u) => u.data >= de && u.data <= ate).reduce((s, u) => s + (kmUso(u).km || 0), 0);
+    if (km < 1500 || !(litros > 0)) return null;
+    const v = km / litros;
+    return v >= 4 && v <= 30 ? { kmPorLitro: v, km, litros, abastecimentos: ab.length } : null;
+  }
+
+  // Números do carro, calculados uma vez. O app aprende com os dados lançados:
+  // preço pelo último abastecimento, consumo pelos abastecimentos e manutenção pelos gastos reais.
+  const PESO_ESTIMATIVA_KM = 20000; // a estimativa de manutenção "vale" como 20.000 km de experiência
+  function contexto(cfg, gastos, kmTotalRegistrado, usos) {
     const precoCfg = parseNum(cfg.comb && cfg.comb.preco, 'dec');
     const consumoCfg = parseNum(cfg.comb && cfg.comb.consumo, 'dec');
-    const cr = consumoReal(gastos);
-    const up = ultimoPreco(gastos);
     const usarReal = !(cfg.comb && cfg.comb.usarReal === false);
     const usarUlt = !(cfg.comb && cfg.comb.usarUltimoPreco === false);
-    const consumo = usarReal && cr ? cr.kmPorLitro : consumoCfg;
+    const cr = consumoReal(gastos);
+    const cm = cr ? null : consumoMedio(gastos, usos);
+    const up = ultimoPreco(gastos);
+    let consumo = consumoCfg, consumoFonte = 'informado';
+    if (usarReal && cr) { consumo = cr.kmPorLitro; consumoFonte = 'real'; }
+    else if (usarReal && cm) { consumo = cm.kmPorLitro; consumoFonte = 'media'; }
     const preco = up && usarUlt ? up.preco : precoCfg;
     const combKm = consumo > 0 && preco > 0 ? preco / consumo : 0;
-    const manutKm = parseNum(cfg.manutencaoKm, 'dec') || 0;
-    const gastoManut = gastos.filter((g) => g.tipo === 'manutencao').reduce((s, g) => s + (g.valor || 0), 0);
+    const manutEst = parseNum(cfg.manutencaoKm, 'dec') || 0;
+    const gm = gastos.filter((g) => g.tipo === 'manutencao' && g.valor > 0);
+    const gastoManut = gm.reduce((s, g) => s + g.valor, 0);
+    let manutKm = manutEst, manutFonte = 'estimativa', manutPesoReal = 0;
+    if (cfg.manutAprender !== false && gm.length && kmTotalRegistrado > 0) {
+      manutKm = (manutEst * PESO_ESTIMATIVA_KM + gastoManut) / (PESO_ESTIMATIVA_KM + kmTotalRegistrado);
+      manutFonte = 'aprendido';
+      manutPesoReal = kmTotalRegistrado / (PESO_ESTIMATIVA_KM + kmTotalRegistrado);
+    }
     return {
-      combKm, consumo, consumoFonte: usarReal && cr ? 'real' : 'informado', consumoReal: cr,
+      combKm, consumo, consumoFonte, consumoReal: cr, consumoMedio: cm,
       preco, precoFonte: up && usarUlt ? 'abastecimento' : 'informado',
-      manutKm, manutReal: kmTotalRegistrado > 0 ? { porKm: gastoManut / kmTotalRegistrado, gasto: gastoManut, km: kmTotalRegistrado } : null,
+      manutKm, manutEst, manutFonte, manutPesoReal,
+      manutReal: kmTotalRegistrado > 0 ? { porKm: gastoManut / kmTotalRegistrado, gasto: gastoManut, km: kmTotalRegistrado, n: gm.length } : null,
       fixosMes: fixosMensal(cfg), cap: capitalMensal(cfg),
     };
   }
@@ -378,7 +405,7 @@ const Calc = (() => {
     return out;
   }
 
-  return { parseNum, minutos, mesesEntre, taxaImplicita, consumoReal, ultimoPreco, fixosMensal, depreciacaoMensal, jurosMensal, capitalMensal, contexto,
+  return { parseNum, minutos, mesesEntre, taxaImplicita, consumoReal, consumoMedio, ultimoPreco, fixosMensal, depreciacaoMensal, jurosMensal, capitalMensal, contexto,
     kmUso, horasUso, ganhosUso, datas, taxaUso, indexar, diaDe, resultado, acerto, lacunas, r2, CALIBRA };
 })();
 

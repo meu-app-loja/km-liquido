@@ -1,5 +1,5 @@
 // ===== Km Líquido — interface (versão Firebase: um carro, vários motoristas) =====
-import { FB } from './fb.js?v=8';
+import { FB } from './fb.js?v=9';
 
 (() => {
   'use strict';
@@ -132,7 +132,7 @@ import { FB } from './fb.js?v=8';
     return (donoM() || {}).id || null;
   }
   const kmTotal = () => usosArr().reduce((s, u) => s + (Calc.kmUso(u).km || 0), 0);
-  const ctx = () => Calc.contexto(cfg(), gastosArr(), kmTotal());
+  const ctx = () => Calc.contexto(cfg(), gastosArr(), kmTotal(), usosArr());
   const chaveUso = (u) => u.data + ' ' + (u.ini || '99:99') + ' ' + String(u.criado || 0).padStart(15, '0');
   const ordUso = (a, b) => (chaveUso(a) < chaveUso(b) ? -1 : 1);
   const abertos = () => usosArr().filter((u) => u.ini && !u.fim && u.data >= addDias(hoje(), -1)).sort(ordUso).reverse();
@@ -506,6 +506,10 @@ import { FB } from './fb.js?v=8';
     let h = '';
     if (!S.demo && !mot(EU()) && EU() !== 'obs') h += cardQuemSou();
     if (!S.demo && souCriador() && varios() && S.carro && (S.carro.membros || []).length < 2) h += cardConvite(true);
+    if (!S.demo && (souCriador() || (mot(EU()) || {}).dono) && c.situacao !== 'alugado') {
+      const ultFipe = (c.fipe.historico || []).map((x) => x.ref).sort().pop();
+      if (ultFipe && ultFipe < refMes(hoje()) && Number(hoje().slice(8)) >= 3) h += `<div class="banner"><span><b>Atualize o valor FIPE de ${esc(nomeMes(refMes(hoje())))}.</b> Leva 1 minuto e deixa o cálculo da desvalorização do carro mais real.</span><button class="btn sm dark" data-act="tab" data-tab="ajustes" type="button">Atualizar</button></div>`;
+    }
     const vid = verId();
     if (!c.plataformas.includes(S.plat)) S.plat = c.plataformas[0] || 'Uber';
     h += seletorMot(vid);
@@ -546,15 +550,15 @@ import { FB } from './fb.js?v=8';
         <p class="note">${varios() ? 'O combustível de todos é somado e dividido pelos km de cada um no acerto, em Resultados. ' : ''}Com dois abastecimentos de tanque cheio e o odômetro, o app mede o consumo real do carro.</p>`;
     } else if (t === 'manutencao' || t === 'outro') {
       h += `<label class="field" for="g-desc"><span>Descrição</span><input class="input dr" id="g-desc" placeholder="${t === 'manutencao' ? 'ex.: troca de óleo, pneus, pastilhas' : 'o que foi'}" autocomplete="off" value="${esc(dv('g-desc'))}"></label>`;
-      h += t === 'manutencao' ? '<p class="note">Serve para comparar o gasto real com a estimativa de manutenção por km. Não é descontado de novo.</p>' : '<p class="note">Descontado de quem pagou, no dia em que aconteceu.</p>';
+      h += t === 'manutencao' ? '<p class="note">Lance toda manutenção: óleo, filtros, pneus, freios, alinhamento, revisão. O app usa esses valores para aprender quanto o carro custa por km. Não é descontado de novo no dia.</p>' : '<p class="note">Descontado de quem pagou, no dia em que aconteceu.</p>';
     } else h += '<p class="note">Descontado de quem pagou, no dia em que aconteceu.</p>';
     h += '<button class="btn primary big block" type="submit">Salvar gasto</button></form></section>';
 
     h += `<section class="card"><h2>O que os gastos mostram</h2><div class="list">`;
-    h += `<div class="li"><div class="main"><b>Consumo</b><small>${x.consumoReal ? `${nf(x.consumoReal.kmPorLitro, 1)} km/l medido em ${nf(x.consumoReal.km)} km` : 'Registre 2 abastecimentos de tanque cheio com o odômetro para medir'}</small></div><span class="v">${x.consumo ? nf(x.consumo, 1) + ' km/l' : '—'}</span></div>`;
+    h += `<div class="li"><div class="main"><b>Consumo</b><small>${x.consumoFonte === 'real' ? `medido com tanque cheio em ${nf(x.consumoReal.km)} km` : x.consumoFonte === 'media' ? `média de ${x.consumoMedio.abastecimentos} abastecimentos em ${nf(x.consumoMedio.km)} km` : 'valor de Ajustes, até ter uns 1.500 km de abastecimentos lançados'}</small></div><span class="v">${x.consumo ? nf(x.consumo, 1) + ' km/l' : '—'}</span></div>`;
     h += `<div class="li"><div class="main"><b>Preço do combustível</b><small>${x.precoFonte === 'abastecimento' ? 'do último abastecimento' : 'informado em Ajustes'}</small></div><span class="v">${brl(x.preco)}</span></div>`;
     h += `<div class="li"><div class="main"><b>Combustível por km</b><small>preço ÷ consumo</small></div><span class="v">${brl(x.combKm)}</span></div>`;
-    if (x.manutReal && x.manutReal.gasto > 0) h += `<div class="li"><div class="main"><b>Manutenção real</b><small>${brl0(x.manutReal.gasto)} em ${nf(x.manutReal.km)} km · estimativa: ${brl(x.manutKm)}/km</small></div><span class="v">${brl(x.manutReal.porKm)}/km</span></div>`;
+    h += `<div class="li"><div class="main"><b>Manutenção por km</b><small>${x.manutFonte === 'aprendido' ? `aprendido: ${brl0(x.manutReal.gasto)} gastos em ${nf(x.manutReal.km)} km + estimativa` : 'estimativa de Ajustes, até lançar gastos de manutenção'}</small></div><span class="v">${brl(x.manutKm)}</span></div>`;
     h += '</div></section>';
 
     const gs = gastosArr().filter((g) => refMes(g.data) === ref).sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
@@ -580,8 +584,8 @@ import { FB } from './fb.js?v=8';
     else if (c.situacao === 'financiado' && x.cap.juros && x.cap.juros.ok === false && x.cap.parcela > 0) p.push('Taxa de juros do financiamento');
     if (c.situacao === 'alugado' && !(P(c.aluguel.valor) > 0)) p.push('Valor do aluguel do carro');
     if (c.est.preco && x.precoFonte !== 'abastecimento') p.push('Preço do combustível (está com valor de exemplo)');
-    if (c.est.consumo && x.consumoFonte !== 'real') p.push('Consumo do carro (está com valor de exemplo)');
-    if (c.est.manutencaoKm) p.push('Manutenção por km (está com estimativa)');
+    if (c.est.consumo && x.consumoFonte === 'informado') p.push('Consumo do carro (está com valor de exemplo; o app aprende sozinho com os abastecimentos)');
+    if (c.est.manutencaoKm && x.manutFonte !== 'aprendido') p.push('Manutenção por km (está com estimativa; o app aprende com os gastos de manutenção)');
     if (c.situacao !== 'alugado' && c.fixos.seguroAnual === '' && c.fixos.ipvaAnual === '') p.push('Seguro e IPVA (use 0 se não tiver)');
     return p;
   }
@@ -777,8 +781,16 @@ import { FB } from './fb.js?v=8';
     if (!j.ok) return 'Sem a taxa de juros, o app não sabe quanto da parcela quita o carro. Informe a taxa do contrato ou o valor financiado e o total de parcelas.';
     return `Da parcela de ${brl(x.cap.parcela)}, <b>${brl(j.valor)} são juros</b> e ${brl(x.cap.parcela - j.valor)} quitam o carro. Faltam cerca de ${brl0(j.saldo)} para quitar. Taxa de ${nf(j.taxa * 100, 2)}% ao mês${j.fonte === 'calculada' ? ', calculada pelo app' : ''}.`;
   }
-  function ajComb() { const x = ctx(); return `Combustível: <b>${brl(x.combKm)} por km</b> = ${brl(x.preco)} ${x.precoFonte === 'abastecimento' ? '(último abastecimento)' : ''} ÷ ${nf(x.consumo, 1)} km/l${x.consumoFonte === 'real' ? ' (medido)' : ''}.`; }
-  function ajManut() { const x = ctx(); return x.manutReal && x.manutReal.gasto > 0 ? `Pelos registros: ${brl0(x.manutReal.gasto)} em ${nf(x.manutReal.km)} km = ${brl(x.manutReal.porKm)} por km.` : 'Inclui óleo, filtros, pneus, freios, suspensão e revisões, divididos pelos km rodados.'; }
+  function ajComb() {
+    const x = ctx();
+    const fonte = x.consumoFonte === 'real' ? ' (medido com tanque cheio)' : x.consumoFonte === 'media' ? ` (média aprendida em ${nf(x.consumoMedio.km)} km)` : '. Depois de uns 1.500 km de abastecimentos lançados, o app passa a calcular o consumo sozinho';
+    return `Combustível: <b>${brl(x.combKm)} por km</b> = ${brl(x.preco)}${x.precoFonte === 'abastecimento' ? ' (último abastecimento)' : ''} ÷ ${nf(x.consumo, 1)} km/l${fonte}.`;
+  }
+  function ajManut() {
+    const x = ctx();
+    if (x.manutFonte === 'aprendido') return `O app está usando <b>${brl(x.manutKm)} por km</b>, aprendido com ${plural(x.manutReal.n, 'gasto', 'gastos')} de manutenção (${brl0(x.manutReal.gasto)}) em ${nf(x.manutReal.km)} km rodados, misturado com a estimativa acima. Hoje o real pesa ${nf(x.manutPesoReal * 100)}% na conta; quanto mais km, mais ele pesa.`;
+    return 'Inclui óleo, filtros, pneus, freios, suspensão e revisões, divididos pelos km rodados. Lance cada manutenção em Gastos que o app vai ajustando esse valor sozinho.';
+  }
   function ajFixos() {
     const x = ctx(), d = donoM() || {}, dias = Math.max(1, P(d.diasMes) || 26);
     return `Total: <b>${brl(x.fixosMes)} por mês</b>${varios() ? `, pagos por ${esc(d.nome || 'quem é dono')}` : ''}. São ${brl(x.fixosMes / dias)} por dia que ${varios() ? esc(d.nome || 'o dono') : 'você'} trabalha.`;
@@ -954,7 +966,7 @@ import { FB } from './fb.js?v=8';
       <label class="check"><input type="checkbox" id="k-up" data-cb="comb.usarUltimoPreco" ${c.comb.usarUltimoPreco !== false ? 'checked' : ''}><span>Atualizar o preço pelo último abastecimento lançado</span></label>
       <label class="check"><input type="checkbox" id="k-real" data-cb="comb.usarReal" ${c.comb.usarReal !== false ? 'checked' : ''}><span>Usar o consumo real medido nos abastecimentos, quando houver</span></label>
       <p class="note" id="ajComb">${ajComb()}</p></section>`;
-    h += `<section class="card"><h2>Manutenção</h2>${campo({ id: 'm-km', label: 'Custo de manutenção por km', path: 'manutencaoKm', pre: 'R$', suf: '/km', est: 'manutencaoKm' })}<p class="note" id="ajManut">${ajManut()}</p></section>`;
+    h += `<section class="card"><h2>Manutenção</h2>${campo({ id: 'm-km', label: 'Custo de manutenção por km', path: 'manutencaoKm', pre: 'R$', suf: '/km', est: 'manutencaoKm' })}<label class="check"><input type="checkbox" id="m-apr" data-cb="manutAprender" ${c.manutAprender !== false ? 'checked' : ''}><span>Aprender com os gastos de manutenção lançados</span></label><p class="note" id="ajManut">${ajManut()}</p></section>`;
     h += `<section class="card"><h2>Custos fixos</h2><div class="grid2">
       <div class="stack" style="gap:6px">${campo({ id: 'x-seg', label: 'Seguro', path: 'fixos.seguroAnual', pre: 'R$' })}<select class="input" id="x-seg-per" aria-label="O seguro é pago" data-c="fixos.seguroPeriodo"><option value="ano"${c.fixos.seguroPeriodo !== 'mes' ? ' selected' : ''}>por ano</option><option value="mes"${c.fixos.seguroPeriodo === 'mes' ? ' selected' : ''}>por mês</option></select></div>${campo({ id: 'x-ipva', label: 'IPVA (por ano)', path: 'fixos.ipvaAnual', pre: 'R$' })}
       ${campo({ id: 'x-lic', label: 'Licenciamento (por ano)', path: 'fixos.licenciamentoAnual', pre: 'R$' })}${campo({ id: 'x-cel', label: 'Celular e internet (mês)', path: 'fixos.celularMensal', pre: 'R$' })}
@@ -963,7 +975,7 @@ import { FB } from './fb.js?v=8';
     h += `<section class="card"><h2>Plataformas</h2><div class="chips">${c.plataformas.map((p) => `<span class="chip" style="display:inline-flex;align-items:center;gap:4px;padding-right:4px">${esc(p)}<button class="icon-btn" style="width:30px;height:30px" data-act="delPlat" data-p="${esc(p)}" aria-label="Remover ${esc(p)}" type="button">${ic('x')}</button></span>`).join('')}</div>
       <form id="fPlat" class="row" style="flex-wrap:nowrap"><input class="input dr" id="p-novo" placeholder="Adicionar plataforma" autocomplete="off" value="${esc(dv('p-novo'))}"><button class="btn" type="submit">Adicionar</button></form></section>`;
     h += cardConta() + cardInstalar() + cardDados();
-    h += '<p class="note" style="text-align:center">Km Líquido · versão 8</p>';
+    h += '<p class="note" style="text-align:center">Km Líquido · versão 9</p>';
     return h;
   }
 
