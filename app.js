@@ -1,5 +1,5 @@
 // ===== Km Líquido — interface (versão Firebase: um carro, vários motoristas) =====
-import { FB } from './fb.js?v=6';
+import { FB } from './fb.js?v=7';
 
 (() => {
   'use strict';
@@ -527,7 +527,7 @@ import { FB } from './fb.js?v=6';
       const lo = ultimoOdo();
       h += `<div class="grid2"><label class="field" for="g-litros"><span>Litros</span><div class="suffix"><input class="input dr" id="g-litros" inputmode="decimal" placeholder="0,0" autocomplete="off" value="${esc(dv('g-litros'))}"><b>L</b></div></label>
         <label class="field" for="g-odo"><span>Odômetro</span><div class="suffix"><input class="input dr" id="g-odo" inputmode="numeric" placeholder="${esc(lo ? nf(lo.odo) : 'km do painel')}" autocomplete="off" value="${esc(dv('g-odo'))}"><b>km</b></div></label></div>
-        <label class="check"><input type="checkbox" class="dr" id="g-cheio" ${dv('g-cheio', true) ? 'checked' : ''}><span>Completei o tanque</span></label>
+        <label class="check"><input type="checkbox" class="dr" id="g-cheio" ${dv('g-cheio', false) ? 'checked' : ''}><span>Completei o tanque (só marque se encheu até a boca)</span></label>
         <p class="note">${varios() ? 'O combustível de todos é somado e dividido pelos km de cada um no acerto, em Resultados. ' : ''}Com dois abastecimentos de tanque cheio e o odômetro, o app mede o consumo real do carro.</p>`;
     } else if (t === 'manutencao' || t === 'outro') {
       h += `<label class="field" for="g-desc"><span>Descrição</span><input class="input dr" id="g-desc" placeholder="${t === 'manutencao' ? 'ex.: troca de óleo, pneus, pastilhas' : 'o que foi'}" autocomplete="off" value="${esc(dv('g-desc'))}"></label>`;
@@ -948,7 +948,7 @@ import { FB } from './fb.js?v=6';
     h += `<section class="card"><h2>Plataformas</h2><div class="chips">${c.plataformas.map((p) => `<span class="chip" style="display:inline-flex;align-items:center;gap:4px;padding-right:4px">${esc(p)}<button class="icon-btn" style="width:30px;height:30px" data-act="delPlat" data-p="${esc(p)}" aria-label="Remover ${esc(p)}" type="button">${ic('x')}</button></span>`).join('')}</div>
       <form id="fPlat" class="row" style="flex-wrap:nowrap"><input class="input dr" id="p-novo" placeholder="Adicionar plataforma" autocomplete="off" value="${esc(dv('p-novo'))}"><button class="btn" type="submit">Adicionar</button></form></section>`;
     h += cardConta() + cardInstalar() + cardDados();
-    h += '<p class="note" style="text-align:center">Km Líquido · versão 6</p>';
+    h += '<p class="note" style="text-align:center">Km Líquido · versão 7</p>';
     return h;
   }
 
